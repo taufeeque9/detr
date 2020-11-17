@@ -40,6 +40,8 @@ def get_args_parser():
                         help="Type of positional embedding to use on top of the image features")
 
     # * Transformer
+    parser.add_argument('--transformer_type', default="transformer", type=str,
+                        help="Type of transformer to use. Ex: 'transformer', 'performer', 'reformer'")
     parser.add_argument('--enc_layers', default=6, type=int,
                         help="Number of encoding layers in the transformer")
     parser.add_argument('--dec_layers', default=6, type=int,
@@ -61,7 +63,7 @@ def get_args_parser():
                         help="Train segmentation head if the flag is provided")
 
     # Loss
-    parser.add_argument('--no_aux_loss', dest='aux_loss', action='store_false',
+    parser.add_argument('--aux_loss', dest='aux_loss', action='store_true',
                         help="Disables auxiliary decoding losses (loss at each layer)")
     # * Matcher
     parser.add_argument('--set_cost_class', default=1, type=float,

@@ -274,16 +274,19 @@ def _get_clones(module, N):
 
 
 def build_transformer(args):
-    return Transformer(
-        d_model=args.hidden_dim,
-        dropout=args.dropout,
-        nhead=args.nheads,
-        dim_feedforward=args.dim_feedforward,
-        num_encoder_layers=args.enc_layers,
-        num_decoder_layers=args.dec_layers,
-        normalize_before=args.pre_norm,
-        return_intermediate_dec=True,
-    )
+    if args.transformer_type == 'transformer':
+        transformer = nn.Transformer(
+            d_model=args.hidden_dim,
+            dropout=args.dropout,
+            nhead=args.nheads,
+            dim_feedforward=args.dim_feedforward,
+            num_encoder_layers=args.enc_layers,
+            num_decoder_layers=args.dec_layers,
+            # normalize_before=args.pre_norm,
+            # return_intermediate_dec=True,
+        )
+
+    return transformer
 
 
 def _get_activation_fn(activation):

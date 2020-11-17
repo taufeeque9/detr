@@ -30,8 +30,8 @@ class DETR(nn.Module):
     The model achieves ~40 AP on COCO val5k and runs at ~28 FPS on Tesla V100.
     Only batch size 1 supported.
     """
-    def __init__(self, num_classes, hidden_dim=256, nheads=8,
-                 num_encoder_layers=6, num_decoder_layers=6):
+    def __init__(self, num_classes, , transformer, backbone_type='resnet50', hidden_dim=256, nheads=8,
+                 num_encoder_layers=6, num_decoder_layers=6, aux_loss=None):
         super().__init__()
 
         # create ResNet-50 backbone
@@ -42,8 +42,9 @@ class DETR(nn.Module):
         self.conv = nn.Conv2d(2048, hidden_dim, 1)
 
         # create a default PyTorch transformer
-        self.transformer = nn.Transformer(
-            hidden_dim, nheads, num_encoder_layers, num_decoder_layers)
+        # self.transformer = nn.Transformer(
+        #     hidden_dim, nheads, num_encoder_layers, num_decoder_layers)
+        self.transformer = transformer
 
         # prediction heads, one extra class for predicting non-empty slots
         # note that in baseline DETR linear_bbox layer is 3-layer MLP
@@ -60,15 +61,23 @@ class DETR(nn.Module):
 
     def forward(self, inputs):
         # propagate inputs through ResNet-50 up to avg-pool layer
-        x = self.backbone.conv1(inputs)
-        x = self.backbone.bn1(x)
-        x = self.backbone.relu(x)
-        x = self.backbone.maxpool(x)
+        if backbone_type == 'resnet50':
+            x = self.backbone.conv1(inputs)
+            x = self.backbone.bn1(x)
+            x = self.backbone.relu(x)
+            x = self.backbone.maxpool(x)
 
-        x = self.backbone.layer1(x)
-        x = self.backbone.layer2(x)
-        x = self.backbone.layer3(x)
-        x = self.backbone.layer4(x)
+            x = self.backbone.layer1(x)
+            x = self.backbone.layer2(x)
+            x = self.backbone.layer3(x)
+            x = self.backbone.layer4(x)
+        elif backbone_type == 'shufflenetv2':
+            x = self.conv1(x)
+            x = self.maxpool(x)
+            x = self.stage2(x)
+            x = self.stage3(x)
+            x = self.stage4(x)
+            x = self.conv5(x)
 
         # convert from 2048 to 256 feature planes for the transformer
         h = self.conv(x)
@@ -343,12 +352,13 @@ def build(args):
 
     transformer = build_transformer(args)
 
+
     model = DETR(
-        backbone,
-        transformer,
+        backbone_type=args.backbone,
+        transformer=transformer,
         num_classes=num_classes,
-        num_queries=args.num_queries,
-        aux_loss=args.aux_loss,
+        # num_queries=args.num_queries,
+        # aux_loss=args.aux_loss,
     )
     if args.masks:
         model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))

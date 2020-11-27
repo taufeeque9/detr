@@ -414,12 +414,12 @@ def build(args):
     transformer = build_transformer(args)
 
 
-    model = DETR(
-        backbone_type=args.backbone,
-        transformer=transformer,
+     model = DETR(
+        backbone,
+        transformer,
         num_classes=num_classes,
-        # num_queries=args.num_queries,
-        # aux_loss=args.aux_loss,
+        num_queries=args.num_queries,
+        aux_loss=args.aux_loss,
     )
     if args.masks:
         model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))

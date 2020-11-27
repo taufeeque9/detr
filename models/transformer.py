@@ -11,6 +11,7 @@ import copy
 from typing import Optional, List
 
 import torch
+from performer_pytorch import Performer
 import torch.nn.functional as F
 from torch import nn, Tensor
 
@@ -284,6 +285,13 @@ def build_transformer(args):
             num_decoder_layers=args.dec_layers,
             # normalize_before=args.pre_norm,
             # return_intermediate_dec=True,
+        )
+    elif args.transformer_type == 'performer':
+        transformer = Performer(
+            dim=args.hidden_dim,
+            depth=args.enc_layers,
+            heads=args.nheads,
+            causal = True
         )
 
     return transformer

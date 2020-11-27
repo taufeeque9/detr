@@ -75,7 +75,7 @@ class DETR(nn.Module):
         # ], dim=-1).flatten(0, 1).unsqueeze(1)
 
         # hs = self.transformer(, mask, self.query_embed.weight, pos[-1])[0]
-        hs = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1),
+        hs = self.transformer(pos[-1] + 0.1 * h.flatten(2).permute(2, 0, 1),
                              self.query_pos.unsqueeze(1)).transpose(0, 1)
 
         outputs_class = self.class_embed(hs)

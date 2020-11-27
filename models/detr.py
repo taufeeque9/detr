@@ -414,7 +414,7 @@ def build(args):
     transformer = build_transformer(args)
 
 
-     model = DETR(
+    model = DETR(
         backbone,
         transformer,
         num_classes=num_classes,

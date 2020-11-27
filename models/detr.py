@@ -21,7 +21,7 @@ from .transformer import build_transformer
 
 class DETR(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbone, transformer, num_classes, num_queries, aux_loss=False):
+    def __init__(self, backbone, transformer, num_classes, num_queries, hidden_dim, aux_loss=False):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the backbone to be used. See backbone.py
@@ -34,7 +34,7 @@ class DETR(nn.Module):
         super().__init__()
         self.num_queries = num_queries
         self.transformer = transformer
-        hidden_dim = transformer.d_model
+        # hidden_dim = transformer.d_model
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
@@ -64,19 +64,32 @@ class DETR(nn.Module):
         if isinstance(samples, (list, torch.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
-
+        # print('original features:',len(features))
         src, mask = features[-1].decompose()
+        bs = src.shape[0]
+        # print('src:', src.shape)
         assert mask is not None
         h = self.input_proj(src)
         H, W = h.shape[-2:]
+
+        # print('original pos:',len(pos), pos[-1].shape)
+
         pos = torch.cat([
             self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
             self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
         ], dim=-1).flatten(0, 1).unsqueeze(1)
 
+        # print('demo pos:',pos.shape)
         # hs = self.transformer(, mask, self.query_embed.weight, pos[-1])[0]
+        # print(h.flatten(2).permute(2, 0, 1).shape)
+
+        # print(self.query_pos.unsqueeze(1).shape)
         hs = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1),
-                             self.query_pos.unsqueeze(1)).transpose(0, 1)
+                             self.query_pos.unsqueeze(1).repeat(1, bs, 1)).transpose(0, 1)
+
+        hs = torch.reshape(hs, (1, hs.shape[0], hs.shape[1], hs.shape[2]))
+
+        # print('hs,', hs.shape)
 
         outputs_class = self.class_embed(hs)
         outputs_coord = self.bbox_embed(hs).sigmoid()
@@ -435,6 +448,7 @@ def build(args):
         num_classes=num_classes,
         num_queries=args.num_queries,
         aux_loss=args.aux_loss,
+        hidden_dim=args.hidden_dim,
     )
     if args.masks:
         model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))

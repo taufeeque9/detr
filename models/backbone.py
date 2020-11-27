@@ -96,7 +96,7 @@ class Backbone(BackboneBase):
             name = 'shufflenet_v2_x1_0'
         backbone = getattr(torchvision.models, name)(
             # replace_stride_with_dilation=[False, False, dilation],
-            pretrained=True, norm_layer=FrozenBatchNorm2d)
+            pretrained=True)
         # num_channels = 512 if name in ('resnet18', 'resnet34') else 2048
         if name in ('resnet18', 'resnet34'):
             num_channels = 512

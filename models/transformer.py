@@ -291,7 +291,7 @@ def build_transformer(args):
             dim=args.hidden_dim,
             depth=args.enc_layers,
             heads=args.nheads,
-            causal = True
+            causal=False,
         )
 
     return transformer

@@ -84,8 +84,8 @@ class DETR(nn.Module):
         # print(h.flatten(2).permute(2, 0, 1).shape)
 
         # print(self.query_pos.unsqueeze(1).shape)
-        hs = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1),
-                             self.query_pos.unsqueeze(1).repeat(1, bs, 1)).transpose(0, 1)
+        qp = self.query_pos.unsqueeze(1).repeat(1, bs, 1)
+        hs = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1), qp).transpose(0, 1)
 
         hs = torch.reshape(hs, (1, hs.shape[0], hs.shape[1], hs.shape[2]))
 

@@ -269,6 +269,55 @@ class TransformerDecoderLayer(nn.Module):
         return self.forward_post(tgt, memory, tgt_mask, memory_mask,
                                  tgt_key_padding_mask, memory_key_padding_mask, pos, query_pos)
 
+class FullPerformer(nn.Module):
+    def __init__(self, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
+                 num_decoder_layers: int = 6, dim_feedforward: int = 2048, dropout: float = 0.1,
+                 activation: str = "relu") -> None:
+        super().__init__()
+
+        self.encoder = Performer(
+            dim=d_model,
+            depth=num_encoder_layers,
+            heads=nhead,
+            causal=False,
+            ff_dropout=dropout,
+            attn_dropout=dropout,
+        )
+
+        self.decoder = Performer(
+            dim=d_model,
+            depth=num_decoder_layers,
+            heads=nhead,
+            causal=True,
+            ff_dropout=dropout,
+            attn_dropout=dropout,
+        )
+
+        self._reset_parameters()
+        self.d_model = d_model
+        self.nhead = nhead
+
+    def _reset_parameters(self):
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, src: Tensor, tgt: Tensor, src_mask: Optional[Tensor] = None, tgt_mask: Optional[Tensor] = None,
+                memory_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None,
+                tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+
+        if src.size(1) != tgt.size(1):
+            raise RuntimeError("the batch number of src and tgt must be equal")
+
+        if src.size(2) != self.d_model or tgt.size(2) != self.d_model:
+            raise RuntimeError("the feature number of src and tgt must be equal to d_model")
+
+
+        encodings = self.encoder(src, mask = src_mask, return_encodings = True)
+        hs = self.decoder(tgt, context = encodings, mask = tgt_mask, context_mask = src_mask) # (1, 2048, 20000)
+        return hs
+
+
 
 def _get_clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
@@ -287,11 +336,12 @@ def build_transformer(args):
             # return_intermediate_dec=True,
         )
     elif args.transformer_type == 'performer':
-        transformer = Performer(
-            dim=args.hidden_dim,
-            depth=args.enc_layers,
-            heads=args.nheads,
-            causal=False,
+        transformer = FullPerformer(
+            d_model=args.hidden_dim,
+            num_encoder_layers=args.enc_layers,
+            num_decoder_layers=args.dec_layers,
+            nhead=args.nheads,
+            dropout=args.dropout,
         )
 
     return transformer

@@ -291,7 +291,7 @@ class FullPerformer(nn.Module):
             causal=True,
             ff_dropout=dropout,
             attn_dropout=dropout,
-            cross_attend=True,
+            # cross_attend=True,
         )
 
         self._reset_parameters()

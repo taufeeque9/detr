@@ -171,6 +171,10 @@ def main(args):
         model_without_ddp.detr.load_state_dict(checkpoint['model'])
 
     output_dir = Path(args.output_dir)
+    output_dir = output_dir / f"{args.backbone}_{args.transformer_type}"
+    if args.output_dir:
+        output_dir.mkdir(parents=True, exist_ok=True)
+
     if args.resume:
         if args.resume.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
@@ -200,10 +204,10 @@ def main(args):
             args.clip_max_norm)
         lr_scheduler.step()
         if args.output_dir:
-            checkpoint_paths = [output_dir / f'checkpoint_{transformer_type}_{epoch}.pth']
+            checkpoint_paths = [output_dir / f'checkpoint_{epoch}.pth']
             # extra checkpoint before LR drop and every 100 epochs
             if (epoch + 1) % args.lr_drop == 0 or (epoch + 1) % 100 == 0:
-                checkpoint_paths.append(output_dir / f'checkpoint{epoch:04}.pth')
+                checkpoint_paths.append(output_dir / f'checkpoint{epoch}_extra.pth')
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),
@@ -245,6 +249,4 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])
     args = parser.parse_args()
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)

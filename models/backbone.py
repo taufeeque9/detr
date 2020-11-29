@@ -60,7 +60,7 @@ class BackboneBase(nn.Module):
     def __init__(self, backbone: nn.Module, train_backbone: bool, num_channels: int, return_interm_layers: bool, backbone_name: str):
         super().__init__()
         for name, parameter in backbone.named_parameters():
-            if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
+            if not train_backbone or ('conv5' not in name and 'layer2' not in name and 'layer3' not in name and 'layer4' not in name):
                 parameter.requires_grad_(False)
         if return_interm_layers:
             if 'shufflenet' in backbone_name:
@@ -77,12 +77,14 @@ class BackboneBase(nn.Module):
 
     def forward(self, tensor_list: NestedTensor):
         xs = self.body(tensor_list.tensors)
-        out: Dict[str, NestedTensor] = {}
+        # out: Dict[str, NestedTensor] = {}
+        out: List[NestedTensor] = []
         for name, x in xs.items():
             m = tensor_list.mask
             assert m is not None
             mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
-            out[name] = NestedTensor(x, mask)
+            # out[name] = NestedTensor(x, mask)
+            out.append(NestedTensor(x, mask))
         return out
 
 
@@ -124,10 +126,11 @@ class Joiner(nn.Sequential):
 
 
 def build_backbone(args):
-    position_embedding = build_position_encoding(args)
+    # position_embedding = build_position_encoding(args)
     train_backbone = args.lr_backbone > 0
     return_interm_layers = args.masks
-    backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
-    model = Joiner(backbone, position_embedding)
-    model.num_channels = backbone.num_channels
+    model = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+
+    # model = Joiner(backbone, position_embedding)
+    # model.num_channels = backbone.num_channels
     return model

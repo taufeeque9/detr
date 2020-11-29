@@ -44,7 +44,7 @@ class DETR(nn.Module):
         self.row_embed = nn.Parameter(torch.rand(50, hidden_dim // 2))
         self.col_embed = nn.Parameter(torch.rand(50, hidden_dim // 2))
         # output positional encodings (object queries)
-        self.query_pos = nn.Parameter(torch.rand(100, hidden_dim))
+        self.query_pos = nn.Parameter(torch.rand(self.num_queries, hidden_dim))
 
 
     def forward(self, samples: NestedTensor):
@@ -63,33 +63,24 @@ class DETR(nn.Module):
         """
         if isinstance(samples, (list, torch.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
-        features, pos = self.backbone(samples)
-        # print('original features:',len(features))
+        features = self.backbone(samples)
+
         src, mask = features[-1].decompose()
         bs = src.shape[0]
-        # print('src:', src.shape)
         assert mask is not None
         h = self.input_proj(src)
         H, W = h.shape[-2:]
-
-        # print('original pos:',len(pos), pos[-1].shape)
 
         pos = torch.cat([
             self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
             self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
         ], dim=-1).flatten(0, 1).unsqueeze(1)
 
-        # print('demo pos:',pos.shape)
-        # hs = self.transformer(, mask, self.query_embed.weight, pos[-1])[0]
-        # print(h.flatten(2).permute(2, 0, 1).shape)
 
-        # print(self.query_pos.unsqueeze(1).shape)
-        qp = self.query_pos.unsqueeze(1).repeat(1, bs, 1)
-        hs = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1), qp).transpose(0, 1)
+        hs = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1), self.query_pos.unsqueeze(1).repeat(1, bs, 1)).unsqueeze(0).transpose(0, 1)
 
-        hs = torch.reshape(hs, (1, hs.shape[0], hs.shape[1], hs.shape[2]))
+        # hs = torch.reshape(hs, (1, hs.shape[0], hs.shape[1], hs.shape[2]))
 
-        # print('hs,', hs.shape)
 
         outputs_class = self.class_embed(hs)
         outputs_coord = self.bbox_embed(hs).sigmoid()
@@ -105,98 +96,6 @@ class DETR(nn.Module):
         # as a dict having both a Tensor and a list.
         return [{'pred_logits': a, 'pred_boxes': b}
                 for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
-
-# class DETR(nn.Module):
-#     """
-#     DETR implementation.
-#
-#     Implementation of DETR in minimal number of lines, with the
-#     following differences wrt DETR in the paper:
-#     * learned positional encoding (instead of sine)
-#     * positional encoding is passed at input (instead of attention)
-#     * fc bbox predictor (instead of MLP)
-#     The model achieves ~40 AP on COCO val5k and runs at ~28 FPS on Tesla V100.
-#     Only batch size 1 supported.
-#     """
-#     def __init__(self, num_classes, , transformer, backbone_type='resnet50', hidden_dim=256, nheads=8,
-#                  num_encoder_layers=6, num_decoder_layers=6, aux_loss=None):
-#         super().__init__()
-#
-#         # create ResNet-50 backbone
-#         self.backbone = resnet50()
-#         del self.backbone.fc
-#
-#         # create conversion layer
-#         self.conv = nn.Conv2d(2048, hidden_dim, 1)
-#
-#         # create a default PyTorch transformer
-#         # self.transformer = nn.Transformer(
-#         #     hidden_dim, nheads, num_encoder_layers, num_decoder_layers)
-#         self.transformer = transformer
-#
-#         # prediction heads, one extra class for predicting non-empty slots
-#         # note that in baseline DETR linear_bbox layer is 3-layer MLP
-#         self.linear_class = nn.Linear(hidden_dim, num_classes + 1)
-#         self.linear_bbox = nn.Linear(hidden_dim, 4)
-#
-#         # output positional encodings (object queries)
-#         self.query_pos = nn.Parameter(torch.rand(100, hidden_dim))
-#
-#         # spatial positional encodings
-#         # note that in baseline DETR we use sine positional encodings
-#         self.row_embed = nn.Parameter(torch.rand(50, hidden_dim // 2))
-#         self.col_embed = nn.Parameter(torch.rand(50, hidden_dim // 2))
-#
-#     def forward(self, inputs):
-#         # propagate inputs through ResNet-50 up to avg-pool layer
-#         if backbone_type == 'resnet50':
-#             x = self.backbone.conv1(inputs)
-#             x = self.backbone.bn1(x)
-#             x = self.backbone.relu(x)
-#             x = self.backbone.maxpool(x)
-#
-#             x = self.backbone.layer1(x)
-#             x = self.backbone.layer2(x)
-#             x = self.backbone.layer3(x)
-#             x = self.backbone.layer4(x)
-#         elif backbone_type == 'shufflenetv2':
-#             x = self.conv1(x)
-#             x = self.maxpool(x)
-#             x = self.stage2(x)
-#             x = self.stage3(x)
-#             x = self.stage4(x)
-#             x = self.conv5(x)
-#
-#         # convert from 2048 to 256 feature planes for the transformer
-#         h = self.conv(x)
-#
-#         # construct positional encodings
-#         H, W = h.shape[-2:]
-#         pos = torch.cat([
-#             self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
-#             self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
-#         ], dim=-1).flatten(0, 1).unsqueeze(1)
-#
-#         # propagate through the transformer
-#         h = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1),
-#                              self.query_pos.unsqueeze(1)).transpose(0, 1)
-#
-#         # finally project transformer outputs to class labels and bounding boxes
-#         out = {'pred_logits': self.linear_class(h),
-#                 'pred_boxes': self.linear_bbox(h).sigmoid()}
-#
-#         if self.aux_loss:
-#             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
-#
-#         return out
-#
-#     @torch.jit.unused
-#     def _set_aux_loss(self, outputs_class, outputs_coord):
-#         # this is a workaround to make torchscript happy, as torchscript
-#         # doesn't support dictionary with non-homogeneous values, such
-#         # as a dict having both a Tensor and a list.
-#         return [{'pred_logits': a, 'pred_boxes': b}
-#                 for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
 
 
 class SetCriterion(nn.Module):

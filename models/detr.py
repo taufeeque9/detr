@@ -63,7 +63,7 @@ class DETR(nn.Module):
         """
         if isinstance(samples, (list, torch.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
-        features = self.backbone(samples)
+        features, pos = self.backbone(samples)
 
         src, mask = features[-1].decompose()
         bs = src.shape[0]
@@ -71,13 +71,13 @@ class DETR(nn.Module):
         h = self.input_proj(src)
         H, W = h.shape[-2:]
 
-        pos = torch.cat([
-            self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
-            self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
-        ], dim=-1).flatten(0, 1).unsqueeze(1)
+        # pos = torch.cat([
+        #     self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
+        #     self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
+        # ], dim=-1).flatten(0, 1).unsqueeze(1)
 
 
-        hs = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1), self.query_pos.unsqueeze(1).repeat(1, bs, 1)).transpose(0, 1).unsqueeze(0)
+        hs = self.transformer((pos[-1].flatten(2).permute(2, 0, 1) + h.flatten(2).permute(2, 0, 1)), self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1)).transpose(0, 1).unsqueeze(0)
 
         # hs = torch.reshape(hs, (1, hs.shape[0], hs.shape[1], hs.shape[2]))
 

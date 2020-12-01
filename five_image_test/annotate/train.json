@@ -1,0 +1,1 @@
+{"images": [{"file_name": "2007_000027.jpg", "height": 500, "width": 486, "id": 2007000027}], "type": "instances", "annotations": [{"area": 44176, "iscrowd": 0, "image_id": 2007000027, "bbox": [173, 100, 176, 251], "category_id": 0, "id": 1, "ignore": 0, "segmentation": []}], "categories": [{"supercategory": "none", "id": 0, "name": "person"}]}

@@ -1,5 +1,10 @@
-**DE⫶TR**: End-to-End Object Detection with Transformers
+**GNR 638 Project on DETR**
 ========
+***Honor Code***
+All of the references are mentioned in the slides of the project.
+
+**DE⫶TR Mods**: End-to-End Object Detection with DETR modified with Efficient Architecture Implementations
+
 PyTorch training code and pretrained models for **DETR** (**DE**tection **TR**ansformer).
 We replace the full complex hand-crafted object detection pipeline with a Transformer, and match Faster R-CNN with a ResNet-50, obtaining **42 AP** on COCO using half the computation power (FLOPs) and the same number of parameters. Inference in 50 lines of PyTorch.
 

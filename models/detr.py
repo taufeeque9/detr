@@ -34,6 +34,7 @@ class DETR(nn.Module):
         super().__init__()
         self.num_queries = num_queries
         self.transformer = transformer
+        self.pytransformer = pytransformer
         # hidden_dim = transformer.d_model
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
@@ -77,7 +78,7 @@ class DETR(nn.Module):
         # ], dim=-1).flatten(0, 1).unsqueeze(1)
 
 
-        if pytransformer:
+        if self.pytransformer:
             hs = self.transformer((pos[-1].flatten(2).permute(2, 0, 1) + h.flatten(2).permute(2, 0, 1)), self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1)).transpose(0, 1).unsqueeze(0)
         else:
             hs = self.transformer(h, mask, self.query_embed.weight, pos[-1])[0]
@@ -350,7 +351,7 @@ def build(args):
         num_queries=args.num_queries,
         aux_loss=args.aux_loss,
         hidden_dim=args.hidden_dim,
-        pytransformer=(True if args.transformer_type == "pytransformer" else False)
+        pytransformer=(False if args.transformer_type == "transformer" else True)
     )
     if args.masks:
         model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))

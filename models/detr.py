@@ -21,7 +21,7 @@ from .transformer import build_transformer
 
 class DETR(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbone, transformer, num_classes, num_queries, hidden_dim, aux_loss=False):
+    def __init__(self, backbone, transformer, num_classes, num_queries, hidden_dim, aux_loss=False, pytransformer=False):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the backbone to be used. See backbone.py
@@ -77,8 +77,10 @@ class DETR(nn.Module):
         # ], dim=-1).flatten(0, 1).unsqueeze(1)
 
 
-        hs = self.transformer((pos[-1].flatten(2).permute(2, 0, 1) + h.flatten(2).permute(2, 0, 1)), self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1)).transpose(0, 1).unsqueeze(0)
-
+        if pytransformer:
+            hs = self.transformer((pos[-1].flatten(2).permute(2, 0, 1) + h.flatten(2).permute(2, 0, 1)), self.query_embed.weight.unsqueeze(1).repeat(1, bs, 1)).transpose(0, 1).unsqueeze(0)
+        else:
+            hs = self.transformer(h, mask, self.query_embed.weight, pos[-1])[0]
         # hs = torch.reshape(hs, (1, hs.shape[0], hs.shape[1], hs.shape[2]))
 
 
@@ -348,6 +350,7 @@ def build(args):
         num_queries=args.num_queries,
         aux_loss=args.aux_loss,
         hidden_dim=args.hidden_dim,
+        pytransformer=(True if args.transformer_type == "pytransformer" else False)
     )
     if args.masks:
         model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))
